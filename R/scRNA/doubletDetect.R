@@ -33,11 +33,9 @@ doubletDetect <- function(Seurat.object, PCs, doublet.rate = 0.076, annotation =
   nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
   pANN_value <- paste0("pANN_", pN_value, "_", pK_value, '_', nExp_poi)
   
-  Seurat.object <- doubletFinder_v3(Seurat.object, PCs = PCs, pN = pN_value, pK = pK_value, nExp = nExp_poi, reuse.pANN = FALSE, sct = sct)
+  # Seurat.object <- doubletFinder_v3(Seurat.object, PCs = PCs, pN = pN_value, pK = pK_value, nExp = nExp_poi, reuse.pANN = FALSE, sct = sct)
   Seurat.object <- doubletFinder_v3(Seurat.object, PCs = PCs, pN = pN_value, pK = pK_value, nExp = nExp_poi.adj, reuse.pANN = pANN_value, sct = sct)
   label <- paste0("DF.classifications_", pN_value, "_", pK_value,'_', nExp_poi.adj)
   Seurat.object@meta.data$Doublet <- Seurat.object@meta.data[, label]
-  
   return(Seurat.object)
 }
-

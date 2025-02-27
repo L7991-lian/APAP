@@ -1,5 +1,4 @@
 # SoupX: ambient RNA
-
 library(SoupX)
 #Load data and estimate soup profile
 filter_0h <- "/0h/outs/filtered_feature_bc_matrix/"
@@ -60,7 +59,7 @@ run_soupx <- function(toc,tod,rho=NULL) {
   saveRDS(sc, Rds_name)
   DropletUtils:::write10xCounts(paste0("./", names[i], "soupX_matrix"), out, version="3")
 }
-
+# RUN
 for (i in 1:nrow(toc_tod_data.frame)) {
   names <- c("0h", "6h", "12h", "24h", "48h", "96h")
   run_soupx(toc_tod_data.frame[i, "toc"], toc_tod_data.frame[i, "tod"], rho = 0.1)
