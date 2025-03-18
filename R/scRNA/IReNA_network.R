@@ -1,7 +1,8 @@
 # IReNA构建肝细胞拟时变化过程的调控网络
 # 我们使用scATAC-seq的肝细胞作为一个ATAC-seq的整体筛选转录因子的印记。
+# hep_merge_test.bam是肝细胞的scATAC-seq的测序reads的信息
 # cds_sub33即choose_graph_segments函数选择的肝细胞（候选肝细胞）
-# Hep_scRNA即肝细胞的scRNA的seurat对象
+# Hep_scRNA即肝细胞的scRNA-seq的seurat对象
 # mo@colData@listData[["seurat_clusters"]] 即Hep_scRNA$anno1，即肝细胞的亚群注释结果
 # gene.cluster即肝细胞拟时变化基因的聚类信息
 
@@ -111,21 +112,20 @@ dim(Hep_DEG_peaks_df)
 # cd ~/rgtdata
 # python setupGenomicData.py --mm10
 ### footprinting 
-# rgt-hint footprinting --atac-seq --paired-end --organism=mm10 --output-prefix=Hep bams.bam differential_peaks.bed
-# 结果保存在Hep.bed
+# rgt-hint footprinting --atac-seq --paired-end --organism=mm10 --output-prefix=Hep_scatac hep_merge_test.bam differential_peaks.bed
+# 结果保存在Hep_scatac.bed
 
 
 ########################################## （3）Analyze bulk ATAC-seq data to refine regulatory relationships (with bulk ATAC-seq data)
 # footprint occupancy score (FOS) 
 motif1 <- Tranfac201803_Mm_MotifTFsF
-
 # obtaining the motif sequences, then use fimo software to identify binding motifs in the footprints. 
 ###merge footprints whose distance is less than 4
-filtered_footprints <- read.table('Hep.bed',sep = '\t')
+filtered_footprints <- read.table('Hep_scatac.bed',sep = '\t')
 filtered_footprints <- filtered_footprints[,c(1,2,3,5)] ### 必须，否则报错
 fastadir <- '/home/lijinlian/rgtdata/mm10/'
 # merged_fasta <- get_merged_fasta(filtered_footprints,fastadir) ## 报错，没有结果出来
-# get_merged_fasta报错，我换用下面merge_footprints实现相近的footprint合并
+# get_merged_fasta报错，我换用下面merge_footprints实现将距离接近（<4bp）的footprints合并
 
 if (!require(data.table)) {
   install.packages("data.table")
@@ -160,10 +160,10 @@ merge_footprints <- function(dt) {
 }
 merged_footprints <- merge_footprints(filtered_footprints)
 head(merged_footprints)
-write.table(merged_footprints, "Hep_merged_footprints.bed", sep = "\t", row.names = F, col.names = F, quote = F)
+write.table(merged_footprints, "Hep_merged_footprints2.bed", sep = "\t", row.names = F, col.names = F, quote = F)
 # 获取footprint的序列
-# bedtools getfasta -name -fi /home/lijinlian/rgtdata/mm10/genome_mm10.fa -bed Hep_merged_footprints.bed -fo Hep_merged_footprint.fasta
-# Hep_merged_footprint.fasta
+# bedtools getfasta -name -fi /home/lijinlian/rgtdata/mm10/genome_mm10.fa -bed Hep_merged_footprints2.bed -fo Hep_merged_footprint2.fasta
+# Hep_merged_footprint2.fasta
 
 
 ### Identify differentially expressed genes related motifs
@@ -173,7 +173,7 @@ fimodir <- '/home/lijinlian/software/meme-5.4.1/src/fimo'
 outputdir1 = "/data2/lijinlian/APAP_project/Hep_scRNA/monocle3_wjl/IReNA_bulkatac/fimo/fimo/" # indicating the output path of shell script
 outputdir <- "/data2/lijinlian/APAP_project/Hep_scRNA/monocle3_wjl/IReNA_bulkatac/fimo/fimo/"
 motifdir <- '/data2/lijinlian/APAP_project/Irena_motif/'
-sequencedir <- './Hep_merged_footprint.fasta'
+sequencedir <- './Hep_merged_footprint2.fasta'
 find_motifs(motif1, step = 20, fimodir, outputdir1, outputdir, motifdir, sequencedir)
 ### run fimo_all script in shell
 shell_code <- paste0('sh ', outputdir,'Fimo_All.sh')
@@ -186,7 +186,7 @@ system(shell_code2, wait=TRUE)
 combined <- combine_footprints(outputdir1)
 peaks <- read.delim('differential_peaks.bed')
 overlapped <- overlap_footprints_peaks(combined, peaks)
-saveRDS(overlapped, "Hep_footprints_overlapped_motifs.Rds")
+saveRDS(overlapped, "Hep_footprints_overlapped_motifs2.Rds")
 
 library(TxDb.Mmusculus.UCSC.mm10.knownGene)
 txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene
@@ -194,46 +194,33 @@ list1 <- get_related_genes(overlapped, txdb = txdb, motif=Tranfac201803_Mm_Motif
 ###Get candidate genes/TFs-related peaks
 list2 <- get_related_peaks(list1, Kmeans_clustering_ENS)
 ### output filtered footprints
-write.table(list2[[1]],'filtered_footprints.bed', quote = F, row.names = F, col.names = F, sep = '\t')
+write.table(list2[[1]],'filtered_footprints2.bed', quote = F, row.names = F, col.names = F, sep = '\t')
 
-
-shell_code1 <- 'samtools view -hb -L filtered_footprints.bed bams.bam > Hep_1_filter.bam'
+## 报错的话，就去linux上跑这个命令
+shell_code1 <- 'samtools view -hb -L filtered_footprints2.bed bams.bam > Hep_2_filter.bam'
 system(shell_code1, wait=TRUE)
-# sh: samtools：未找到命令
-# Warning message:
-#   In system(shell_code1, wait = TRUE) : 调用命令时发生了错误
 
 # count the cuts of each position in footprints by wig_track(), and use these cuts to calculate the FOS of footprints to identify enriched TFs which determine the regulatory relationship
 ### calculate cuts of each position in footprints
-bamfilepath1 <- 'Hep_1_filter.bam'
+bamfilepath1 <- 'Hep_2_filter.bam'
 ### set parameter 'workers' to make this function run in parallel
 cuts1 <- cal_footprint_cuts(bamfilepath = bamfilepath1, bedfile = list2[[1]], workers = 40, index_bam = T)
 cut_list <- list(cuts1)
 ### get related genes of footprints with high FOS
-potential_regulation <- Footprints_FOS(cut_list, list2[[2]], FOS_threshold = 0.5)
+potential_regulation <- Footprints_FOS(cut_list, list2[[2]], FOS_threshold = 1)
 ### Use information of footprints with high FOS to refine regulatory relationships
 filtered_regulatory <- filter_ATAC(potential_regulation, regulatory_relationships)
-saveRDS(filtered_regulatory, "filtered_regulatory_fos0.5.Rds")
+saveRDS(filtered_regulatory, "filtered_regulatory_fos1.Rds")
 
 ### 简化网络分析，超几何检验
-TFs_list <- network_analysis(filtered_regulatory,Kmeans_clustering_ENS,TFFDR1 = -log10(0.05),TFFDR2 = -log10(0.05))
-saveRDS(TFs_list, "Hep_irena_bulkatac_TFs_list.Rds")
-saveRDS(filtered_regulatory, "Hep_irena_filtered_regulatory.0.05.Rds")
+TFs_list <- network_analysis(filtered_regulatory, Kmeans_clustering_ENS,TFFDR1 = -log10(0.05),TFFDR2 = -log10(0.05))
+# 导出富集转录因子间的调控网络
+write.csv(TFs_list[["TF_network"]], "Hep_irena_bulkatac_enrichTF_regulate_module2.csv", quote = F)
 
-### visualize regulatory networks for enriched transcription factors of each module
-plot_tf_network(TFs_list)
-
-### 导出富集转录因子间的调控网络
-write.csv(TFs_list[["TF_network"]], "Hep_irena_bulkatac_enrichTF_regulate_module.csv", quote = F)
-
-### Weight进一步筛选调控关系
-filtered_regulatory_relationships <- filtered_regulatory[filtered_regulatory$Weight > 0.0001, ]
+### TF pseudotime热图
 motif1 <- Tranfac201803_Mm_MotifTFsF
+filtered_regulatory_relationships <- filtered_regulatory[filtered_regulatory$Weight > 0.0001, ]
 Module_Tfs <- unique(c(as.character(unique(filtered_regulatory_relationships$TFSymbol)), as.character(unique(filtered_regulatory_relationships$TargetSymbol[filtered_regulatory_relationships$TargetSymbol %in% motif1$TFs]))))
-saveRDS(filtered_regulatory_relationships, "Hep_irena_filtered_regulatory.0.05_weight0.0001.Rds")
-
-
-### TF pseudotime热图, used
 pt.matrix2 <- exprs(cds_sub33)[match(Module_Tfs, rownames(rowData(cds_sub33))),order(pseudotime(cds_sub33))]
 pt.matrix2 <- t(apply(pt.matrix2,1,function(x){smooth.spline(x,df=3)$y}))
 pt.matrix2 <- t(apply(pt.matrix2,1,function(x){(x-mean(x))/sd(x)}))

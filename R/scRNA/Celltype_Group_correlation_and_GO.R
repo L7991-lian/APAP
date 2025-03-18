@@ -2,7 +2,6 @@
 # 肝脏驻留细胞类型，6小时的样本显著差异
 # All为所有细胞类型的scRNA对象
 
-### scRNA-seq
 marker_list <- list()
 library(dplyr)
 for (m in seq_along(celltype_id)) {
@@ -17,64 +16,47 @@ for (m in seq_along(celltype_id)) {
 marker_df_scRNA <- do.call(rbind, marker_list)
 marker_scRNA_avg <- AverageExpression(All, features = unique(marker_df_scRNA$gene), group.by = c("celltype", "Group"), assays = "SCT")$SCT
 marker_scRNA_avg <- as.data.frame(marker_scRNA_avg)
+a <- marker_scRNA_avg[,c(1:18, 49:54, 43:48, 19:30, 37:42, 31:36)]
+#### pheatmap
+annotation_col = data.frame(Group = rep(unique(All$Group), 9), CellType = rep(c("Hepatocyte", "Endothelial", "Macrophate", "HSC", "Cholangiocyte", "T", "B", "NK", "Neutrophil"), each=6))
+rownames(annotation_col) = colnames(a)
+annotation_col$CellType <- factor(annotation_col$CellType, levels = names(Celltype_col))
+annotation_col$Group <- factor(annotation_col$Group, levels = unique(All$Group))
+Celltype_col = c(
+  "Hepatocyte" = "#F7931E",
+  "Endothelial" = "#F8736A",
+  "Macrophage" = "#A9A9A9",
+  "T" = "#96CEB4",
+  "B" = "#A3A500",
+  "Neutrophil" = "#C0C130",
+  "NK" = "#9D73C2",
+  "Cholangiocyte" = "#B74CAB",
+  "HSC" = "#E686C9"
+)
+group_col <- setNames(ggsci::pal_bmj()(6), unique(All$Group))
+ann_colors = list(CellType = Celltype_col, Group = group_col)
+pheatmap::pheatmap(cor(a),
+                        cluster_rows = F, 
+                        cluster_cols = F, 
+                        border_color = "white",
+                        annotation_col = annotation_col, 
+                        annotation_row = annotation_col,
+                        annotation_colors = ann_colors,
+                        show_rownames = F, show_colnames = F, cellwidth = 15, cellheight = 15,
+                        treeheight_row = 0, main = "Correlation between samples of celltypes",
+                        color = colorRampPalette(colors = c("blue","white","red3"))(100))
 
-### scATAC-seq
-snATAC_obj <- subset(coembed_data, Datatype == "snATAC")
-snATAC_obj$Group <- droplevels(snATAC_obj$Group)
-DefaultAssay(snATAC_obj) <- 'ACTIVITY'
-marker_list_snatac <- list()
-library(dplyr)
-for (m in seq_along(celltype_id)) {
-  obj <- subset(snATAC_obj, celltype == celltype_id[m])
-  Idents(obj) <- obj$Group
-  min.pct = 0.1 
-  logfc.threshold = 0.1
-  diff.wilcox = FindAllMarkers(obj, only.pos = T, min.pct = min.pct, logfc.threshold = logfc.threshold)
-  diff.wilcox_sig <- diff.wilcox %>% filter(p_val_adj <= 0.01)
-  marker_list_snatac[[celltype_id[m]]] <- diff.wilcox_sig
-}
-marker_df_snATAC <- do.call(rbind, marker_list_snatac)
-marker_snATAC_avg <- AverageExpression(snATAC_obj, features = unique(marker_df_snATAC$gene), group.by = c("celltype", "Group"), assays = "ACTIVITY")$ACTIVITY
-marker_snATAC_avg <- as.data.frame(marker_snATAC_avg)
-
-
-### 相关性分析
-a_scrna <- intersect(unique(c(rownames(marker_snATAC_avg), rownames(marker_scRNA_avg))), rownames(All))
-a_scATAC <- intersect(unique(c(rownames(marker_snATAC_avg), rownames(marker_scRNA_avg))), rownames(snATAC_obj))
-scrna_scatac_deg_inter <- intersect(a_scrna, a_scATAC)
-# scRNA
-bind_marker_scRNA_avg <- AverageExpression(All, features = scrna_scatac_deg_inter, group.by = c("celltype", "Group"), assays = "SCT")$SCT
-bind_marker_scRNA_avg <- as.data.frame(bind_marker_scRNA_avg)
-colnames(bind_marker_scRNA_avg) <- paste0("RNA_", colnames(bind_marker_scRNA_avg))
-# scATAC
-DefaultAssay(snATAC_obj) <- "RNA"
-bind_marker_snATAC_avg <- AverageExpression(snATAC_obj, features = scrna_scatac_deg_inter, group.by = c("celltype", "Group"), assays = "RNA")$RNA
-bind_marker_snATAC_avg <- as.data.frame(bind_marker_snATAC_avg)
-colnames(bind_marker_snATAC_avg) <- paste0("ATAC_", colnames(bind_marker_snATAC_avg))
-bind_marker_snATAC_avg <- bind_marker_snATAC_avg[rownames(bind_marker_scRNA_avg), ]
-# CORRELATION
-bind_marker_df <- cbind(bind_marker_scRNA_avg, bind_marker_snATAC_avg)
-bind_marker_df_order <- bind_marker_df[, c(1:18, 49:54, 43:48, 19:30, 37:42, 31:36, #scRNA
-                                           55:63, 79:81, 76:78, 64:69, 73:75, 70:72 #snATAC
-)]
-bind_marker_df_cor_order <- cor(bind_marker_df_order)
-pheatmap::pheatmap(bind_marker_df_cor_order, scale = "none", border_color = "white", fontsize = 12,
-                          cluster_rows = F, cluster_cols = F, show_rownames = F, 
-                          treeheight_row = 0, main = "Correlation between samples of celltypes",
-                          color = colorRampPalette(colors = c("blue","white","red3"))(100))
-
-
-### 肝脏驻留细胞类型的6h差异基因热图和功能富集分析
+#### 肝脏驻留细胞类型的6h差异基因热图和功能富集分析
 # DEG pheatmap
 hsc_ec_hep_maf_chol_6h_intersect <- c(subset(marker_list[[2]], cluster == "6h")$gene, subset(marker_list[[9]], cluster == "6h")$gene, subset(marker_list[[1]], cluster == "6h")$gene, subset(marker_list[[3]], cluster == "6h")$gene, subset(marker_list[[8]], cluster == "6h")$gene)
 hsc_ec_hep_maf_chol_6h_scRNA_avg <- marker_scRNA_avg[hsc_ec_hep_maf_chol_6h_intersect, c(match(c("Hepatocyte_6h", "Endothelial_6h", "Macrophage_6h", "HSC_6h", "Cholangiocyte_6h"), colnames(marker_scRNA_avg)))]
 colnames(hsc_ec_hep_maf_chol_6h_scRNA_avg) <- sub("_6h", "", colnames(hsc_ec_hep_maf_chol_6h_scRNA_avg))
 pheatmap::pheatmap(hsc_ec_hep_maf_chol_6h_scRNA_avg, scale = "row", 
-                          cluster_rows = T, cluster_cols = T, show_rownames = F, cutree_rows =4,
-                          treeheight_row = 0,
-                          fontsize = 12,
-                          treeheight_col = 0,clustering_method = "average", cellwidth = 30,
-                          border_color = "white")
+                   cluster_rows = T, cluster_cols = T, show_rownames = F, cutree_rows =4,
+                   treeheight_row = 0,
+                   fontsize = 12,
+                   treeheight_col = 0,clustering_method = "average", cellwidth = 30,
+                   border_color = "white")
 # GO
 hsc_ec_hep_maf_chol_6h_nocluter_df <- data.frame(gene = c(subset(marker_list[[2]], cluster == "6h")$gene, subset(marker_list[[9]], cluster == "6h")$gene, subset(marker_list[[1]], cluster == "6h")$gene, subset(marker_list[[3]], cluster == "6h")$gene, subset(marker_list[[8]], cluster == "6h")$gene), cluster = c(rep("Endothelial", length(c(subset(marker_list[[2]], cluster == "6h")$gene))), rep("HSC", length(c(subset(marker_list[[9]], cluster == "6h")$gene))), rep("Hepatocyte", length(c(subset(marker_list[[1]], cluster == "6h")$gene))), rep("Macrophage", length(c(subset(marker_list[[3]], cluster == "6h")$gene))), rep("Cholangiocyte", length(c(subset(marker_list[[8]], cluster == "6h")$gene))))) 
 hsc_ec_hep_maf_chol_6h_nocluter_df_unique <- hsc_ec_hep_maf_chol_6h_nocluter_df %>% distinct()
@@ -189,19 +171,19 @@ rownames(df_wide) <- rn
 pheatmap::pheatmap(df_wide, border_color = "white", fontsize = 12, cluster_rows = F, cluster_cols = F, cellwidth = 30)
 
 
-### 不是肝脏本身驻留细胞类型
+#### 不是肝脏本身驻留细胞类型
 # DEG pheatmap
 T_B_NK_Neu_6h_intersect <- c(subset(marker_list[[4]], cluster == "6h")$gene, subset(marker_list[[5]], cluster == "6h")$gene, subset(marker_list[[6]], cluster == "6h")$gene, subset(marker_list[[7]], cluster == "6h")$gene)
 T_B_NK_Neu_6h_scRNA_avg <- marker_scRNA_avg[T_B_NK_Neu_6h_intersect, c(match(c("T_6h", "B_6h", "NK_6h", "Neutrophil_6h"), colnames(marker_scRNA_avg)))]
 colnames(T_B_NK_Neu_6h_scRNA_avg) <- sub("_6h", "", colnames(T_B_NK_Neu_6h_scRNA_avg))
 pheatmap::pheatmap(T_B_NK_Neu_6h_scRNA_avg[,c("T", "B","NK","Neutrophil")], scale = "row", 
-                          cluster_rows = T, cluster_cols = F, show_rownames = F, 
-                          # cutree_rows =4,
-                          treeheight_row = 0,
-                          fontsize = 12,
-                          treeheight_col = 0,clustering_method = "complete", cellwidth = 30,
-                          # color = colorRampPalette(colors = c("blue","white","red3"))(100),
-                          border_color = "white")
+                   cluster_rows = T, cluster_cols = F, show_rownames = F, 
+                   # cutree_rows =4,
+                   treeheight_row = 0,
+                   fontsize = 12,
+                   treeheight_col = 0,clustering_method = "complete", cellwidth = 30,
+                   # color = colorRampPalette(colors = c("blue","white","red3"))(100),
+                   border_color = "white")
 # GO
 T_B_NK_Neu_6h_nocluter_df <- data.frame(gene = c(subset(marker_list[[4]], cluster == "6h")$gene, subset(marker_list[[5]], cluster == "6h")$gene, subset(marker_list[[6]], cluster == "6h")$gene, subset(marker_list[[7]], cluster == "6h")$gene), cluster = c(rep("T", length(c(subset(marker_list[[4]], cluster == "6h")$gene))), rep("B", length(c(subset(marker_list[[5]], cluster == "6h")$gene))), rep("Neutrophil", length(c(subset(marker_list[[6]], cluster == "6h")$gene))), rep("NK", length(c(subset(marker_list[[7]], cluster == "6h")$gene))))) 
 T_B_NK_Neu_6h_nocluter_df_unique <- T_B_NK_Neu_6h_nocluter_df %>% distinct()
@@ -298,5 +280,4 @@ df_wide <- df_wide[, c(2,3,5,4)]
 rownames(df_wide) <- rn
 pheatmap::pheatmap(df_wide, border_color = "white", fontsize = 12, cluster_rows = F, cluster_cols = F, cellwidth = 30)
 
-
-
+# END!

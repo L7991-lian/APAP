@@ -102,7 +102,7 @@ pgo <- ggplot(A,
 pgo
 
 ### ssGSEA
-##基因集需要是list为对象。默认情况下，kcdf="Gaussian"，适用于输入表达式值连续的情况，如对数尺度的微阵列荧光单元、RNA-seq log-CPMs、log-RPKMs或log-TPMs。当输入表达式值是整数计数时，比如那些从RNA-seq实验中得到的值，那么这个参数应该设置为kcdf="Poisson"
+##基因集需要是list为对象。
 library(homologene)
 library(GSVA)
 gene_list <- list("S_genes" = human2mouse(cc.genes$s.genes)$mouseGene, "G2M_genes" = human2mouse(cc.genes$g2m.genes)$mouseGene)
