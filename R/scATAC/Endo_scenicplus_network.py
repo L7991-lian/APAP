@@ -1,4 +1,4 @@
-# 2025年构建内皮细胞调控网络,scenicplus
+# 构建内皮细胞调控网络,scenicplus
 #!/usr/bin/env python
 # coding: utf-8
 ### used this script

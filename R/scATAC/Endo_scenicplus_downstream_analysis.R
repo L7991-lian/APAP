@@ -1,5 +1,35 @@
-# 内皮细胞调控网络下游分析
-# eRegulon_metadata_result3：内皮细胞scenic+调控网络结构
+# Endothelial network with scenicplus
+################################ prepared data
+# RNA
+table(Endo_scRNA1$annotation6)
+# Apold1+ Lsec     EC_other 
+#                1939         5207 
+library(SeuratDisk)
+Idents(Endo_scRNA1) <- Endo_scRNA1$annotation6
+# we used the SCT data
+Endo_scRNA1@assays$RNA <- Endo_scRNA1@assays$SCT
+SaveH5Seurat(Endo_scRNA1, filename = "Endo_scRNA1.h5Seurat")
+Convert("Endo_scRNA1.h5Seurat", dest = "h5ad")
+# Endo_scRNA1.h5ad
+
+# ATAC
+table(Endo_scATAC1$annotation6)
+# Apold1+ Lsec     EC_other 
+#                 193         4872 
+Endo_scATAC1_meta <- Endo_scATAC1@meta.data[, c("annotation6", "seurat_clusters", "Group")]
+Endo_scATAC1_meta$barcode <- rownames(Endo_scATAC1_meta)
+Endo_scATAC1_meta <- Endo_scATAC1_meta[, c("barcode", "annotation6", "seurat_clusters", "Group")]
+Endo_scATAC1_meta$barcode <- sub(".*_", "", Endo_scATAC1_meta$barcode)
+Endo_scATAC1_meta <- Endo_scATAC1_meta[!duplicated(Endo_scATAC1_meta$barcode),]
+write.table(Endo_scATAC1_meta, file = "cell_data.tsv", sep = "\t", quote = F, col.names = T, row.names = F)
+
+
+############################################# downstream analysis and plot
+############################################# 内皮细胞调控网络下游分析
+# eRegulon_metadata_result3：内皮细胞scenic+调控网络结果, 获取的方式在脚本Endo_get_network_table.ipynb
+setwd("/data2/lijinlian/APAP/scenicplus/Endo_scRNA_Hbefg_scATAC7_scenicplus_25_1/out_4/")
+library(readr)
+eRegulon_metadata_result3 <- read_csv("/data2/lijinlian/APAP/scenicplus/Endo_scRNA_Hbefg_scATAC7_scenicplus_25_1/out_4/eRegulon_metadata_result3.csv")
 
 ### TF表达Dotplot
 Endo_TFs <- unique(eRegulon_metadata_result3$TF)
@@ -106,14 +136,123 @@ write.csv(net_tf_GENE, "Apold1_clusters_tfs_eregulon_metadata_DEG_target_network
 write.csv(net_tf_GENE_info, "Apold1_clusters_tfs_eregulon_metadata_DEG_target_node.csv", quote = F)
 write.csv(net_tf_GENE[,c("Source", "Target", "Regulation", "TF2G_importance")], "Apold1_clusters_tfs_eregulon_metadata_DEG_target_edge.csv", quote = F)
 
-###
+
+############################################# CoveragePlot of Hbegf
+consensus_regions <- read.delim("/data2/lijinlian/APAP/scenicplus/Endo_scRNA_Hbefg_scATAC7_scenicplus_25_1/consensus_peak_calling/consensus_regions.bed", header=FALSE)
+library(regioneR)
+gr1 <- toGRanges(consensus_regions)
+# Clusters
+DefaultAssay(Endo_scATAC1) <- "ATAC"
+pdf("Hbegf_cluster_CoveragePlot.pdf", width = 9, height = 4)
+CoveragePlot(
+  object = Endo_scATAC1,
+  region = "Hbegf", group.by = "annotation6",
+  ranges = gr1,
+  features = "Hbegf",
+  extend.downstream = 5000, extend.upstream = 2000,
+  ranges.title = "MACS2"
+)
+dev.off()
+# Group
+pdf("Hbegf_Group_CoveragePlot.pdf", width = 9, height = 4)
+CoveragePlot(
+  object = Endo_scATAC1,
+  region = "Hbegf", group.by = "Group",
+  ranges = gr1,
+  features = "Hbegf",
+  extend.downstream = 5000, extend.upstream = 2000,
+  ranges.title = "MACS2"
+)
+dev.off()
 
 
+############################################# 扫描Hbegf启动子区域的模体
+# Hbegf 基因的坐标：chr18-36504927-36515805
+library(motifmatchr)
+library(JASPAR2020) #JASPAR2020
+library(TFBSTools)
+library(BSgenome.Mmusculus.UCSC.mm10) #BSgenome.Hsapiens.UCSC.hg19
+pfm <- getMatrixSet(
+  x = JASPAR2020,
+  opts = list(collection = "CORE", tax_group = 'vertebrates', all_versions = FALSE)
+)
+peaks2 <- GRanges(seqnames = c("chr18"),
+                  ranges = IRanges(start = c(36518891),end = c(36519391)), strand = "-")
+# Get motif matches for example motifs in peaks
+motif_ix <- matchMotifs(pfm, peaks2, genome = "mm10") 
+motif_matches_matrix <- motifMatches(motif_ix) # Extract matches matrix from SummarizedExperiment result
+mm <- as.matrix(motif_matches_matrix)
+# motif的基因名字
+pfm_motif_name <- Endo_scATAC1@assays[["ATAC"]]@motifs@motif.names
+pfm_motif_name <- as.data.frame(pfm_motif_name)
+pfm_motif_name <- t(pfm_motif_name)
+pfm_motif_name <- as.data.frame(pfm_motif_name)
+mm <- t(mm)
+mm <- as.data.frame(mm)
+MM <- subset(mm, V1 == "TRUE")
+MM$motif_name <- pfm_motif_name$V1[match(rownames(MM), rownames(pfm_motif_name))]
+head(MM)
+write.table(MM, "Hbegf_peaks_36518891_36519391_motifmatchr_find_motif_result.txt")
+
+motif_gene_n <- "FOSL1"
+pdf(paste(motif_gene_n,"motif.pdf", sep = "_"),width = 3.5, height = 3)
+MotifPlot(
+  object = Endo_scATAC1,
+  motifs = "MA0477.2"
+)
+dev.off()
+
+motif_gene_n <- "FOSL2"
+pdf(paste(motif_gene_n,"motif.pdf", sep = "_"),width = 3.5, height = 3)
+MotifPlot(
+  object = Endo_scATAC1,
+  motifs = "MA0478.1"
+)
+dev.off()
+
+motif_gene_n <- "JUN"
+pdf(paste(motif_gene_n,"motif.pdf", sep = "_"),width = 4.5, height = 3)
+MotifPlot(
+  object = Endo_scATAC1,
+  motifs = "MA0489.1"
+)
+dev.off()
+
+### Footprint
+Endo_scATAC1 <- Footprint(
+  object = Endo_scATAC1, in.peaks = T, 
+  motif.name = c("FOSL1", "FOSL2", "JUN"), 
+  genome = BSgenome.Mmusculus.UCSC.mm10
+)
+Endo_scATAC1$Two_group <- factor(Endo_scATAC1$Two_group, levels = c("Apold1+ Lsec(Stress)", "Other"))
+Idents(Endo_scATAC1) <- Endo_scATAC1$Two_group
+PlotFootprint(Endo_scATAC1, features = c("FOSL1"), label = F)
+PlotFootprint(Endo_scATAC1, features = c("FOSL2"), label = F)
+PlotFootprint(Endo_scATAC1, features = c("JUN"), label = F)
+# subset, Group
+Apold1_Lsec_obj <- Footprint(
+  object = subset(Endo_scATAC1, annotation6 == "Apold1_Lsec"), in.peaks = T, 
+  motif.name = c("FOSL1", "FOSL2", "JUN"), 
+  genome = BSgenome.Mmusculus.UCSC.mm10
+)
+PlotFootprint(Apold1_Lsec_obj, features = c("FOSL1"), label = F, group.by =  "Group")
+PlotFootprint(Apold1_Lsec_obj, features = c("FOSL2"), label = F, group.by = "Group")
+PlotFootprint(Apold1_Lsec_obj, features = c("JUN"), label = F, group.by = "Group")
+
+### split vlnplot
+VlnPlot(Endo_scRNA1, features = c("Fosl1"), group.by = "Clusters", split.by = "Group") + theme(axis.title.x = element_blank()) & geom_point(stat = 'summary',fun=mean, position = position_dodge(width = 0.9))
+VlnPlot(Endo_scRNA1, features = c("Fosl2"), group.by = "Clusters", split.by = "Group") + theme(axis.title.x = element_blank()) & geom_point(stat = 'summary',fun=mean, position = position_dodge(width = 0.9))
+VlnPlot(Endo_scRNA1, features = c("Jun"), group.by = "Clusters", split.by = "Group") + theme(axis.title.x = element_blank()) & geom_point(stat = 'summary',fun=mean, position = position_dodge(width = 0.9))
 
 
+############################################# 计算相关性
+avg1 <- AverageExpression(subset(Endo_scRNA1, Clusters == "Apold1+ Lsec(Stress)"), features = c("Hbegf","Fosl1", "Fosl2", "Jun"), assays = "SCT", group.by = "Group")$SCT
+avg1_df <- as.data.frame(t(avg1))
+cor(avg1_df)
+#           Hbegf     Fosl1     Fosl2       Jun
+# Hbegf 1.0000000 0.6843026 0.8487261 0.2646273
+# Fosl1 0.6843026 1.0000000 0.7240405 0.0625012
+# Fosl2 0.8487261 0.7240405 1.0000000 0.5318654
+# Jun   0.2646273 0.0625012 0.5318654 1.0000000
 
-
-
-
-
-
+# END！
