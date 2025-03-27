@@ -1,4 +1,4 @@
-# IReNA构建肝细胞拟时变化过程的调控网络
+########## IReNA构建肝细胞拟时变化过程的调控网络
 # 我们使用scATAC-seq的肝细胞作为一个ATAC-seq的整体筛选转录因子的印记。
 # hep_merge_test.bam是肝细胞的scATAC-seq的测序reads的信息
 # cds_sub33即choose_graph_segments函数选择的肝细胞（候选肝细胞）
