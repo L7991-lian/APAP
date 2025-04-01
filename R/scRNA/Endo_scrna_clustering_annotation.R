@@ -61,20 +61,20 @@ Endo_scrna_harmony_sce <- harmony.clustering(sce, Dims = c(22), resolution = 0.0
 Endo_scRNA1$Clusters <- Endo_scRNA1$seurat_clusters
 Endo_scRNA1$Clusters <- as.numeric(Endo_scRNA1$Clusters)
 Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "1")] <- "Chst2+ Lsec"
-Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "2")] <- "Hmox1+ Lsec(Stress)"
+Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "2")] <- "Apold1+ Lsec(Stress)"
 Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "3")] <- "Alb+ Lsec"
 Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "4")] <- "Rpl32+ EC"
-Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "5")] <- "Hmox1+ Lsec(Stress)"
+Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "5")] <- "Apold1+ Lsec(Stress)"
 Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "6")] <- "Rspo3+ Lvec(Pericentral)"
 Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "7")] <- "Efnb1+ Lvec(Periportal)"
 Endo_scRNA1$Clusters[which(Endo_scRNA1$Clusters == "8")] <- "Mki67+ EC(Proliferating)"
-Endo_scRNA1$Clusters <- factor(Endo_scRNA1$Clusters, levels = c("Rspo3+ Lvec(Pericentral)", "Efnb1+ Lvec(Periportal)", "Chst2+ Lsec", "Hmox1+ Lsec(Stress)", "Alb+ Lsec", "Rpl32+ EC", "Mki67+ EC(Proliferating)"))
+Endo_scRNA1$Clusters <- factor(Endo_scRNA1$Clusters, levels = c("Rspo3+ Lvec(Pericentral)", "Efnb1+ Lvec(Periportal)", "Chst2+ Lsec", "Apold1+ Lsec(Stress)", "Alb+ Lsec", "Rpl32+ EC", "Mki67+ EC(Proliferating)"))
 DimPlot(Endo_scRNA1, group.by = "Clusters", cols = cols, pt.size = 0.8)
 
 
 ###### other 
 # jjDotPlot
-Endo_scRNA1_clusters_marker_genes <- c("Vwf", "Stab2", "Rspo3", "Efnb1", "Chst2", "Hmox1", "Alb", "Rpl32", "Mki67")
+Endo_scRNA1_clusters_marker_genes <- c("Vwf", "Stab2", "Rspo3", "Efnb1", "Chst2", "Apold1", "Alb", "Rpl32", "Mki67")
 jjDotPlot(object = Endo_scRNA1, col.min = 0,base_size = 14, textSize = 14, bar.width = 3, segWidth = 0.3,
                gene = Endo_scRNA1_clusters_marker_genes, xtree = F, ytree = F, legend.position = "bottom",
                id = 'Clusters')
@@ -113,7 +113,7 @@ Roe_Analysis <- function(train, tissue = "tissue", celltype = "finalannotate", p
 Roe_Analysis(Endo_scRNA1, tissue = "Group", celltype = "Clusters", perfix = 'Endo_scRNA')
 
 # Stress signatures
-stress_genes_ec_scrna <- c("Atf3", "Atf4", "Atf6","Egr1", "Fosl1","Hif1a", "Hsp90aa1", "Hspa1a", "Hspa1b", "Hspa8","Hspa9", "Hspb1", "Hspd1", "Hsph1", "Bcl10", "Bcl2l1", "Cdkn1a", "Tlr4")
+stress_genes_ec_scrna <- c("Atf3", "Atf4", "Atf6","Egr1", "Fosl1","Hif1a", "Hsp90aa1", "Hspa1a", "Hspa1b", "Hspa8","Hspa9", "Hspb1", "Hspd1", "Hsph1", "Bcl10", "Bcl2l1", "Cdkn1a", "Hmox1", "Tlr4")
 jjDotPlot(object = Endo_scRNA1, col.min = 0,
                base_size = 14, textSize = 16, 
                bar.width = 3, segWidth = 0.3,

@@ -62,23 +62,23 @@ Hep_scrna_harmony_sce <- harmony.clustering(sce, Dims = seq(13), resolution = 0.
 
 
 #### annotation
-Endo_scRNA1_clusters_marker_genes <- c("Thrsp", "Cps1", "Cyp2e1", "Cdk1")
+Endo_scRNA1_clusters_marker_genes <- c("Thrsp", "Igfbp2", "Cyp2e1", "Cdk1")
 ncol = 4
 FeaturePlot(Hep_scRNA, features = Endo_scRNA1_clusters_marker_genes, ncol = ncol, order = T, pt.size = 1.2)
 
 Hep_scRNA$anno1 <- Hep_scRNA$seurat_clusters
 Hep_scRNA$anno1 <- as.numeric(Hep_scRNA$anno1)
 Hep_scRNA$anno1[which(Hep_scRNA$anno1 == "1")] <- "Thrsp+(Regenerating/Normal)"
-Hep_scRNA$anno1[which(Hep_scRNA$anno1 == "2")] <- "Cps1+(Stress)"
+Hep_scRNA$anno1[which(Hep_scRNA$anno1 == "2")] <- "Igfbp2+(Stress)"
 Hep_scRNA$anno1[which(Hep_scRNA$anno1 == "3")] <- "Cyp2e1+(Pericentral)"
 Hep_scRNA$anno1[which(Hep_scRNA$anno1 == "4")] <- "Cdk1+(Proliferating)"
-Hep_scRNA$anno1 <- factor(Hep_scRNA$anno1, levels = c("Thrsp+(Regenerating/Normal)", "Cps1+(Stress)", "Cyp2e1+(Pericentral)", "Cdk1+(Proliferating)"))
+Hep_scRNA$anno1 <- factor(Hep_scRNA$anno1, levels = c("Thrsp+(Regenerating/Normal)", "Igfbp2+(Stress)", "Cyp2e1+(Pericentral)", "Cdk1+(Proliferating)"))
 DimPlot(Hep_scRNA, group.by = "anno1", pt.size = 0.5) 
 DimPlot(Hep_scRNA, group.by = "Group", pt.size = 0.5) 
 
 
 # jjDotPlot
-Hep_scRNA_anno1_markers <- c("Thrsp", "Cps1", "Cyp2e1", "Cdk1")
+Hep_scRNA_anno1_markers <- c("Thrsp", "Igfbp2", "Cyp2e1", "Cdk1")
 jjDotPlot(object = Hep_scRNA, col.min = 0,base_size = 14, textSize = 14, segWidth = 0.4, bar.width = 3,
                gene = unique(Hep_scRNA_anno1_markers), xtree = F, ytree = F, legend.position = "top",plot.margin = c(0,1,0,0),
                id = 'anno1')
@@ -126,6 +126,51 @@ FeaturePlot(Hep_scRNA, features = "regeneration_receptors1", pt.size = 1.2, orde
                         guide = "colorbar",
                         limits = c(min(Hep_scRNA$regeneration_receptors1), max(Hep_scRNA$regeneration_receptors1)))
 
+##### DEG and GO enrichment analysis
+DefaultAssay(Hep_scRNA) <- "SCT"
+Idents(Hep_scRNA) <- Hep_scRNA$anno1
+object.name = "Hep_scRNA_cluster"
+min.pct = 0.25
+logfc.threshold = 0.1
+diff.wilcox = FindAllMarkers(Hep_scRNA, only.pos = T, min.pct = min.pct, logfc.threshold = logfc.threshold)
+all.markers = diff.wilcox %>% filter(p_val_adj <= 0.01) %>% group_by(cluster)
+
+library(tidyverse)
+topn.markers = 150
+cluster_markers <- all.markers %>% group_by(cluster) %>% top_n(topn.markers, wt = avg_log2FC) #tibble
+cluster_markers <- as.data.frame(cluster_markers)
+table(cluster_markers$cluster)
+
+gene.cluster <- cluster_markers[, c("cluster", "gene")] 
+library(clusterProfiler)
+library(enrichplot)
+group <- data.frame(gene=gene.cluster$gene,group=gene.cluster$cluster)
+Gene_ID <- bitr(gene.cluster$gene, fromType="SYMBOL",
+                toType="ENTREZID",
+                OrgDb="org.Mm.eg.db")
+data  <- merge(Gene_ID,group,by.x='SYMBOL',by.y='gene')
+data_GO <- compareCluster(
+  ENTREZID~group,
+  data=data,
+  fun="enrichGO",
+  OrgDb="org.Mm.eg.db",
+  ont = "BP",
+  pAdjustMethod = "BH",
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.05
+)
+data_GO_sim <- clusterProfiler::simplify(data_GO,
+                                         cutoff=0.7,
+                                         by="p.adjust",
+                                         select_fun=min)
+data_GO_sim <- setReadable(data_GO_sim, OrgDb = "org.Mm.eg.db")
+data_GO_sim_Hep_scrna <- data_GO_sim@compareClusterResult
+terms_list <- list(data_GO_sim_Hep_scrna$Description[c(5:10,18,19,21,22, 
+                                                       38,42,43,46,47,48,52,55,81,83,
+                                                       275:279,285, 286, 289, 
+                                                       465:468, 471,472, 475:478
+)])
+dotplot(data_GO_sim, showCategory=terms_list[[1]]) + scale_y_discrete(labels=function(x) stringr::str_wrap(x, width=65)) & theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 12))
 
 
 # Hep_scrna_harmony_sce
