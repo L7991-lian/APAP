@@ -87,4 +87,67 @@ jjDotPlot(object = Endo_scATAC2, col.min = 0,
                xtree = F, ytree = F, legend.position = "bottom",
                id = 'Clusters') + ggtitle("Egfr ligands")
 
+#### ##### DEG and GO enrichment analysis
+DefaultAssay(Endo_scATAC2) <- "ACTIVITY"
+Idents(Endo_scATAC2) <- Endo_scATAC2$Clusters
+object.name = "Endo_scATAC_Clusters"
+min.pct = 0.25
+logfc.threshold = 0.25
+diff.wilcox = FindAllMarkers(Endo_scATAC2, only.pos = T, min.pct = min.pct, logfc.threshold = logfc.threshold)
+all.markers = diff.wilcox %>% filter(p_val_adj <= 0.01) %>% group_by(cluster)
 
+library(tidyverse)
+library(clusterProfiler)
+library(ggplot2)
+library(ggpubr)
+library(org.Mm.eg.db)
+topn.markers = 100
+cluster_markers <- all.markers %>% group_by(cluster) %>% top_n(topn.markers, wt = avg_log2FC) #tibble
+cluster_markers <- as.data.frame(cluster_markers)
+clusters <- unique(cluster_markers$cluster)
+enrichment_results <- list()
+for (cluster in clusters) {
+  cluster_genes_symbol <- cluster_markers[cluster_markers$cluster == cluster, "gene"]
+  print(head(cluster_genes_symbol))
+  cluster_genes_entrez <- mapIds(org.Mm.eg.db, as.character(cluster_genes_symbol), column = "ENTREZID", keytype = "SYMBOL")
+  cluster_genes_entrez <- cluster_genes_entrez[!is.na(cluster_genes_entrez)]
+  if (length(cluster_genes_entrez) == 0) {
+    next
+  }
+  res1 <- enrichGO(gene = cluster_genes_entrez,
+                   OrgDb = org.Mm.eg.db, 
+                   readable = TRUE,
+                   ont = "BP",
+                   pvalueCutoff = 0.05,
+                   qvalueCutoff = 0.05)
+  enrichment_results[[as.character(cluster)]] <- res1
+}
+segment_plot_list <- list()
+for (i in 1:length(enrichment_results)) {
+  res1 <- enrichment_results[[i]]
+  cluster_name <- names(enrichment_results[i])
+  print(paste("cluster:", cluster_name, sep = ""))
+  topn <- 10
+  top_10_descriptions <- head(res1[order(res1$p.adjust), "Description"], topn)
+  
+  library(ggplot2)
+  library(forcats)
+  p <- ggplot(res1[res1$Description %in% top_10_descriptions, ], 
+              aes(-1*log10(p.adjust), 
+                  fct_reorder(factor(Description), -1*log10(p.adjust)))) +
+    geom_segment(aes(xend = 0, yend = Description)) +
+    geom_point(aes(color = -1*log10(p.adjust), size = Count)) +
+    scale_color_gradient(low = "blue", high = "red") +
+    theme_minimal() +
+    ylab(NULL) +
+    xlab(bquote("-log"[10] ~ "p.adjust")) +
+    labs(title = paste0("Cluster_", cluster_name)) +
+    geom_vline(xintercept = -log10(0.05), linetype = "dashed") +
+    theme(text = element_text(size = 16), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 16))
+  
+  segment_plot_list[[cluster_name]] <- p
+}
+plot.ncol = 2
+segment_plot <- patchwork::wrap_plots(segment_plot_list, ncol = plot.ncol, )
+
+# END!
