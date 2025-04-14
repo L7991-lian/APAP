@@ -225,56 +225,11 @@ pickle.dump(cistopic_obj,
 #Inferring candidate enhancer regions
 # binarize the topics using the otsu method and by taking the top 3k regions per topic.
 from pycisTopic.topic_binarization import *
-# region_bin_topics_otsu = binarize_topics(
-#     cistopic_obj, method='otsu'
-# )
+region_bin_topics_otsu = binarize_topics(
+     cistopic_obj, method='otsu'
+ )
 region_bin_topics_top3k = binarize_topics(
     cistopic_obj, method='ntop', ntop = 3_000
-)
-binarized_cell_topic = binarize_topics(
-    cistopic_obj,
-    target='cell',
-    method='li',
-    plot=True,
-    num_columns=5, nbins=100)
-
-from pycisTopic.topic_qc import compute_topic_metrics, plot_topic_qc, topic_annotation
-import matplotlib.pyplot as plt
-from pycisTopic.utils import fig2img
-
-topic_qc_metrics = compute_topic_metrics(cistopic_obj)
-pickle.dump(topic_qc_metrics,
-            open(os.path.join(work_dir, 'topic_qc_metrics.pkl'), 'wb'))
-
-topic_annot = topic_annotation(
-    cistopic_obj,
-    annot_var='annotation6',
-    binarized_cell_topic=binarized_cell_topic,
-    general_topic_thr = 0.2
-)
-topic_annot
-topic_annot.to_csv('topic_annot_unfiltered_result.csv', index=True)
-
-filtered_topic_annot = topic_annot[topic_annot['is_general'] == False]
-filtered_topic_annot
-
-# 行名
-filtered_topic_annot.index.tolist()
-# 行名只保留数字
-row_indices = filtered_topic_annot.index.tolist()
-# 去掉 "Topic" 前缀，只保留数字部分
-topic_numbers = [int(index.split('Topic')[1]) for index in row_indices if 'Topic' in index]
-topic_numbers
-cell_topic_heatmap(
-    cistopic_obj,
-    scale = True, cluster_topics = False,
-    selected_topics = topic_numbers,
-    variables = ['annotation6'],
-    save = "cell_filter_topic_heatmap.pdf",
-    legend_loc_x = 1.0,
-    legend_loc_y = -1.2,
-    legend_dist_y = -1,
-    figsize = (15, 13)
 )
 
 # #calculate DARs per cell type
