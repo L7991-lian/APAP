@@ -96,11 +96,11 @@ narrow_peaks_dict = peak_calling(macs_path,
                                  outdir= os.path.join(work_dir, 'consensus_peak_calling/MACS/'),
                                  genome_size='mm',
                                  n_cpu = 50,
-                                 input_format='BEDPE',
-                                 shift=73,
-                                 ext_size=146,
-                                 keep_dup = 'all',
-                                 q_value = 0.05)
+                                 input_format='BEDPE', #默认参数
+                                 shift=73,  #默认参数, ATAC-seq推荐用
+                                 ext_size=146, #默认参数, ATAC-seq推荐用
+                                 keep_dup = 'all', #默认参数
+                                 q_value = 0.05) #默认参数
 pickle.dump(narrow_peaks_dict,
             open(os.path.join(work_dir, 'consensus_peak_calling/MACS/narrow_peaks_dict.pkl'), 'wb'))
 from pycisTopic.iterative_peak_calling import *
@@ -117,7 +117,6 @@ consensus_peaks.to_bed(
 
 ##########################
 import pybiomart as pbm
-#dataset = pbm.Dataset(name='hsapiens_gene_ensembl',  host='http://www.ensembl.org')
 # dataset = pbm.Dataset(name='mmusculus_gene_ensembl', host='http://www.ensembl.org')
 # annot = dataset.query(attributes=['chromosome_name', 'transcription_start_site', 'strand', 'external_gene_name', 'transcript_biotype'])
 # annot.to_csv('mmusculus_gene_ensembl_annot.csv', index=True)
