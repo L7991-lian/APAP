@@ -86,8 +86,7 @@ pickle.dump(bed_paths,
 pickle.dump(bw_paths,
            open(os.path.join(work_dir, 'consensus_peak_calling/bw_paths.pkl'), 'wb'))
 
-# bed_paths = pickle.load(open(os.path.join(work_dir, 'consensus_peak_calling/bed_paths.pkl'), 'rb'))
-#bw_paths =  pickle.load(open(os.path.join(work_dir, 'consensus_peak_calling/bw_paths.pkl'), 'rb'))
+
 from pycisTopic.pseudobulk_peak_calling import peak_calling
 macs_path='/home/lijinlian/anaconda3/bin/macs2'
 # Run peak calling
@@ -106,7 +105,6 @@ pickle.dump(narrow_peaks_dict,
 from pycisTopic.iterative_peak_calling import *
 # Other param
 peak_half_width = 250
-#narrow_peaks_dict = pickle.load(open(os.path.join(work_dir, 'consensus_peak_calling/MACS/narrow_peaks_dict.pkl'), 'rb'))
 # Get consensus peaks
 consensus_peaks=get_consensus_peaks(narrow_peaks_dict, peak_half_width, chromsizes=chromsizes, path_to_blacklist=path_to_blacklist)
 consensus_peaks.to_bed(
@@ -185,7 +183,6 @@ pickle.dump(cistopic_obj,
 # #Run topic modeling
 import pickle
 # os.environ['MALLET_MEMORY'] = '200G'
-# cistopic_obj = pickle.load(open(os.path.join(work_dir, 'cistopic_obj.pkl'), 'rb'))
 from pycisTopic.cistopic_class import *
 sys.stderr = open(os.devnull, "w")  # silence stderr
 models=run_cgs_models(cistopic_obj,
@@ -205,8 +202,6 @@ if not os.path.exists(os.path.join(work_dir, 'models')):
 pickle.dump(models,
     open(os.path.join(work_dir, 'models/mix_mm_models_500_iter_LDA.pkl'), 'wb'))
 
-# cistopic_obj = pickle.load(open(os.path.join(work_dir, 'cistopic_obj.pkl'), 'rb'))
-# models = pickle.load(open(os.path.join(work_dir, 'models/mix_mm_models_500_iter_LDA.pkl'), 'rb'))
 from pycisTopic.lda_models import *
 numTopics = 30
 model = evaluate_models(models,
@@ -222,29 +217,9 @@ pickle.dump(cistopic_obj,
             open(os.path.join(work_dir, 'cistopic_obj_addLDA.pkl'), 'wb'))
 
 #Inferring candidate enhancer regions
-# binarize the topics using the otsu method and by taking the top 3k regions per topic.
-from pycisTopic.topic_binarization import *
-region_bin_topics_otsu = binarize_topics(
-     cistopic_obj, method='otsu'
- )
-region_bin_topics_top3k = binarize_topics(
-    cistopic_obj, method='ntop', ntop = 3_000
-)
-
 # #calculate DARs per cell type
 from pycisTopic.diff_features import *
 imputed_acc_obj = impute_accessibility(cistopic_obj, selected_cells=None, selected_regions=None, scale_factor=10**6)
-normalized_imputed_acc_obj = normalize_scores(imputed_acc_obj, scale_factor=10**4)
-variable_regions = find_highly_variable_features(
-    normalized_imputed_acc_obj,
-    # min_disp = 0.05,
-    # min_mean = 0.0125,
-    # max_mean = 3,
-    max_disp = np.inf,
-    # n_bins=20,
-    n_top_features=None,
-    plot=True
-)
 print('Calculating DARs for each Cluster...')
 markers_dict_Cluster = find_diff_features(cistopic_obj, imputed_acc_obj, adjpval_thr=0.05, log2fc_thr = np.log2(1.5), n_cpu=40, variable='annotation6', split_pattern = '-')
 
@@ -256,8 +231,6 @@ for x in markers_dict_Cluster:
 if not os.path.exists(os.path.join(work_dir, 'candidate_enhancers')):
     os.makedirs(os.path.join(work_dir, 'candidate_enhancers'))
 import pickle
-# pickle.dump(region_bin_topics_otsu, open(os.path.join(work_dir, 'candidate_enhancers/region_bin_topics_otsu.pkl'), 'wb'))
-pickle.dump(region_bin_topics_top3k, open(os.path.join(work_dir, 'candidate_enhancers/region_bin_topics_top3k.pkl'), 'wb'))
 pickle.dump(markers_dict_Cluster, open(os.path.join(work_dir, 'candidate_enhancers/markers_dict_Cluster.pkl'), 'wb'))
 
 
@@ -279,7 +252,6 @@ pickle.dump(region_sets, open(os.path.join(work_dir, 'candidate_enhancers/region
 #make use a custom made cistarget database on the consensus peaks
 db_fpath = "/data2/lijinlian/APAP/scenicplus/"
 motif_annot_fpath = "/data2/lijinlian/APAP/scenicplus/"
-
 rankings_db = os.path.join(db_fpath, 'mm10_screen_v10_clust.regions_vs_motifs.rankings.feather')
 scores_db =  os.path.join(db_fpath, 'mm10_screen_v10_clust.regions_vs_motifs.scores.feather')
 motif_annotation = os.path.join(motif_annot_fpath, 'motifs-v10-nr.mgi-m0.00001-o0.0.tbl')
@@ -308,7 +280,7 @@ run_pycistarget(
     annotation_version = 'v10')
 sys.stderr = sys.__stderr__  # unsilence stderr
 
-##########################
+
 ##########################
 import scanpy as sc
 import pickle as pickle
@@ -319,7 +291,7 @@ adata = sc.read_h5ad(os.path.join('/data2/lijinlian/APAP/scenicplus/Endo_scRNA_H
 menr = dill.load(open(os.path.join(work_dir, 'motifs/menr.pkl'), 'rb'))
 cistopic_obj = pickle.load(open(os.path.join(work_dir, 'cistopic_obj_addLDA.pkl'), 'rb'))
 
-#sample 5 cells from both the scRNA-seq and scATAC-seq data and average the signals to generate a single metacell
+#sample 10 cells from both the scRNA-seq and scATAC-seq data and average the signals to generate a single metacell
 from scenicplus.scenicplus_class import create_SCENICPLUS_object
 import numpy as np
 scplus_obj = create_SCENICPLUS_object(
@@ -339,7 +311,7 @@ if not os.path.exists(os.path.join(work_dir, 'scenicplus')):
 scplus_obj.metadata_cell['annotation6'] = [index.rsplit('_', 1)[0] for index in scplus_obj.metadata_cell.index]
 scplus_obj.metadata_cell['annotation6']
 
-
+# SCENIC+ use the GBM to predict tf to gene importance and region to gene importance
 from scenicplus.wrappers.run_scenicplus import run_scenicplus
 try:
     run_scenicplus(
