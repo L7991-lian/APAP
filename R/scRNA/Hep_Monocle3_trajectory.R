@@ -80,6 +80,19 @@ pseudotime_df1 <- as.data.frame(sce_sub33$pseudotime)
 colnames(pseudotime_df1) <- "pseudotime"
 pseudotime_df1$annotation <- sce_sub33$anno1
 pseudotime_df1$Group <- sce_sub33$Group
+# 样本在拟时间的分布
+ppsed3 <- ggplot(pseudotime_df1, aes(x = pseudotime, y = annotation_order, fill = annotation_order)) +#数据
+  geom_density_ridges(stat = "density_ridges", from = 0) +#绘制山脊图
+  theme(legend.position = "right", #图例去除
+        axis.text.y = element_blank(),
+        # axis.line.y = element_blank(),#去除Y轴轴线
+        axis.ticks.y = element_blank()
+  )+ #去除Y轴刻度
+  # scale_y_discrete(expand = c(0, 0.5)) + #调整起始图形距离X轴距离
+  scale_fill_manual(values = ggsci::pal_nejm()(6)) +
+  theme_bw()+
+  theme(panel.border = element_rect(fill=NA,color= "black", size=1, linetype= "solid"), text = element_text(size = 14, colour = "black"), legend.title = element_blank(), axis.text = element_text(size = 14, colour = "black")) #+
+ggsave("geom_density_ridges_order_trajectory_Group_0.pdf", ppsed3, width = 6, height = 5)
 
 #仅显示候选细胞标示对应cluster颜色的图
 col_set2 <- c("red", "orange", "purple", "blue")

@@ -115,6 +115,21 @@ Roe_Analysis <- function(train, tissue = "tissue", celltype = "finalannotate", p
 }
 Roe_Analysis(Hep_scRNA, tissue = "Group", celltype = "anno1", perfix = 'Hep_scRNA_anno1')
 
+# 再生相关受体评分
+regeneration_receptors <- c("Cd81","Egfr","Lrp1","Ptprf")
+Hep_scRNA <- AddModuleScore(Hep_scRNA, features = list(regeneration_receptors), name = "regeneration_receptors")
+library(scales)
+library(RColorBrewer)
+pdf("mouse_Hep_scRNA_regeneration_receptors1.pdf", width = 4, height = 4)
+FeaturePlot(Hep_scRNA, features = "regeneration_receptors1", pt.size = 1.2, order = T) &
+  scale_color_gradientn(colours = rev(brewer.pal(n = 11, name = "RdBu")),
+                        # values = rescale(c(min(Hepatocyte$Pericentral.signature1),0,max(Hepatocyte$Pericentral.signature1))),
+                        guide = "colorbar",
+                        limits = c(min(Hep_scRNA$regeneration_receptors1), max(Hep_scRNA$regeneration_receptors1))) &
+  tidydr::theme_dr()
+# theme(panel.border = element_rect(fill=NA,color= "black", size=1, linetype= "solid")) + theme(legend.position = "right") 
+dev.off()
+
 
 ##### AddModuleScore: regeneration_receptors 
 regeneration_receptors <- c("Egfr","Lrp1","Cd81","Ptprf")
@@ -171,6 +186,55 @@ terms_list <- list(data_GO_sim_Hep_scrna$Description[c(5:10,18,19,21,22,
                                                        465:468, 471,472, 475:478
 )])
 dotplot(data_GO_sim, showCategory=terms_list[[1]]) + scale_y_discrete(labels=function(x) stringr::str_wrap(x, width=65)) & theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 12))
+
+
+### Mfsd2a and Igfbp2 correlation, scatter plot
+Mfsd2a_Igfbp2_exp <- as.data.frame(t(as.data.frame(Hep_scRNA_s@assays$RNA@data[c("Igfbp2", "Mfsd2a"),])))
+g <- ggplot(Mfsd2a_Igfbp2_exp, aes(x = Igfbp2, y = Mfsd2a)) +
+  geom_point(alpha = 0.6, size = 2, color = "blue4") +  # 添加散点
+  labs(title = "Igfbp2 vs Mfsd2a Expression",
+       x = "Igfbp2 Expression",
+       y = "Mfsd2a Expression") +
+  theme_minimal()
+ggsave("Mfsd2a_Igfbp2_exp_scatterplot.pdf", g, width = 6, height = 6)
+
+Mfsd2a_Igfbp2_exp <- as.data.frame(Mfsd2a_Igfbp2_exp)
+Mfsd2a_Igfbp2_exp$Group <- as.data.frame(Hep_scRNA_s$Group)[,1]
+Mfsd2a_Igfbp2_exp$coexp <- Mfsd2a_Igfbp2_exp$Igfbp2*Mfsd2a_Igfbp2_exp$Mfsd2a
+p2 <- ggplot(Mfsd2a_Igfbp2_exp, aes(x = Igfbp2, y = Mfsd2a, color = coexp)) +
+  geom_point(alpha = 0.6, size = 2) +  
+  scale_color_viridis_c()+
+  labs(title = "Correlation of Igfbp2 and Mfsd2a",
+       x = "Igfbp2",
+       y = "Mfsd2a") +
+  theme_minimal() + 
+  facet_grid(.~Group) +
+  theme(axis.text = element_text(size = 12,colour = 'black'),
+        axis.title = element_text(size = 12,colour = 'black',face = 'plain'),
+        axis.ticks = element_line(size=1),
+        plot.title = element_text(size=12,hjust=0.5),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"))
+ggsave("Mfsd2a_Igfbp2_exp_scatterplot_split3_sct.pdf", p2, width = 24, height = 4)
+
+cor_results <- Mfsd2a_Igfbp2_exp %>%
+  group_by(Group) %>%
+  summarise(
+    cor_value = cor(Igfbp2, Mfsd2a, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Igfbp2, Mfsd2a, method = "pearson")$p.value
+  )
+print(cor_results)
+#  Group cor_value  p_value
+# <fct>     <dbl>    <dbl>
+# 1 0h     0.140    3.80e- 6
+# 2 6h     0.485    1.43e-50
+# 3 12h   -0.000799 9.59e- 1
+# 4 24h    0.0845   1.76e- 5
+# 5 48h    0.0349   1.30e- 1
+# 6 96h   -0.0160   2.33e- 1
+# 共表达细胞比例
+unname(table(Mfsd2a_Igfbp2_exp[Mfsd2a_Igfbp2_exp$coexp > 0,]$Group))/unname(table(Mfsd2a_Igfbp2_exp$Group))
+# 0h           6h          12h          24h          48h          96h
+# 0.0811059908 0.7041916168 0.0002439619 0.0054390054 0.0047770701 0.0000000000
 
 
 # Hep_scrna_harmony_sce
