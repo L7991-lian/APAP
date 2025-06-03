@@ -996,17 +996,46 @@ p <- jjDotPlot(object = Endo_scATAC1, col.min = 0,base_size = 14, textSize = 14,
 ggsave("Egfr_signaling_Cluster_Endo_scATAC_jjDotPlot1.pdf", p, width =8, height =6)
 
 # C
-mouse.Endo <- readRDS("/data2/lijinlian/APAP_project/snRNA.apap2023.mouse.Endothelial.Rds")
-DimPlot(mouse.Endo, group.by = "seurat_clusters") + theme(legend.title = element_blank(), legend.text = element_text(size = 14)) + ggtitle("")
-f.names <- "Endo_scRNA_Hbegf"
-ncol = 2
-fp <- FeaturePlot(mouse.Endo, features = c("Apold1", "Hbegf"), ncol = ncol, order = T, pt.size = 1.2) & viridis::scale_colour_viridis(option = "plasma") & theme(axis.title.x = element_blank()) & tidydr::theme_dr()
-ggsave(paste(f.names, "FeaturePlot.pdf", sep = "_"), fp, width = ncol*4, height = ceiling(length(unique(cluster2_genes))/ncol)*4, limitsize = F)
+snRNA.apap2023.mouse.Endothelial <- readRDS("/data4/jinlianli/APAP/ANALYSIS/Nature2024_mouse_APAP_scRNA_Endo/snRNA.apap2023.mouse.Endothelial.Rds")
+snRNA.apap2023.mouse.Endothelial$seurat_clusters <- as.numeric(snRNA.apap2023.mouse.Endothelial$seurat_clusters)
+cols <- ggsci::pal_lancet()(7)
+names(cols) <- levels(snRNA.apap2023.mouse.Endothelial$seurat_clusters)
+dimp1 <- DimPlot(snRNA.apap2023.mouse.Endothelial, group.by = "seurat_clusters", cols = cols, pt.size = 0.8) + tidydr::theme_dr() + theme(element_text(size = 16), title = element_blank())
+ggsave("snRNA.apap2023.mouse.Endothelial_clusters_Dimplot.pdf", dimp1, width = 5, height = 4.5)
+
+MARKERS <- c("Apold1")
+f.names <- "Endo_mouse_snRNA_apap_Apold1"
+ncol = 1
+fp <- FeaturePlot(snRNA.apap2023.mouse.Endothelial, features = MARKERS, ncol = ncol, order = T, pt.size = 0.8) & viridis::scale_colour_viridis(option = "plasma")& tidydr::theme_dr()
+ggsave(paste(f.names, "FeaturePlot.pdf", sep = "."), fp, width = ncol*4, height = ceiling(length(MARKERS)/ncol)*4)
+MARKERS <- c("Hbegf")
+f.names <- "Endo_mouse_snRNA_apap_Hbegf"
+ncol = 1
+fp <- FeaturePlot(snRNA.apap2023.mouse.Endothelial, features = MARKERS, ncol = ncol, order = T, pt.size = 0.8) & viridis::scale_colour_viridis(option = "plasma")& tidydr::theme_dr()
+ggsave(paste(f.names, "FeaturePlot.pdf", sep = "."), fp, width = ncol*4, height = ceiling(length(MARKERS)/ncol)*4)
 
 # D
-# 此处的基因表达图的pdf已有提供
-# 数据不小心删除，如需重新分析，请自行到原文中下载
 # 数据来源于Matchett et al., 2024, Nature
+Endo_human_snRNA_apap <- readRDS("/data4/jinlianli/APAP/ANALYSIS/Endothelial_snRNA_human_2023/APAP_human.endothelial_raw.Rds")
+Endo_human_snRNA_apap$seurat_clusters <- as.numeric(Endo_human_snRNA_apap$seurat_clusters)
+Endo_human_snRNA_apap$seurat_clusters2 <- as.numeric(Endo_human_snRNA_apap$seurat_clusters)
+Endo_human_snRNA_apap$seurat_clusters2[which(Endo_human_snRNA_apap$seurat_clusters2 == "7")] <- "5"
+Endo_human_snRNA_apap$seurat_clusters2[which(Endo_human_snRNA_apap$seurat_clusters2 == "8")] <- "7"
+Endo_human_snRNA_apap$seurat_clusters2[which(Endo_human_snRNA_apap$seurat_clusters2 == "9")] <- "8"
+pdf("Human_APAP_2023_seurat_cluster2_UMAP.pdf", width = 5, height = 5)
+DimPlot(Endo_human_snRNA_apap, cols = ggsci::pal_lancet()(9), group.by = "seurat_clusters2") & tidydr::theme_dr() + theme(title = element_blank())
+dev.off()
+
+MARKERS <- c("APOLD1")
+f.names <- "Endo_Human_snRNA_apap_APOLD1"
+ncol = 1
+fp <- FeaturePlot(Endo_human_snRNA_apap, features = MARKERS, ncol = ncol, order = T, pt.size = 0.8) & viridis::scale_colour_viridis(option = "plasma")& tidydr::theme_dr()
+ggsave(paste(f.names, "FeaturePlot.pdf", sep = "."), fp, width = ncol*4, height = ceiling(length(MARKERS)/ncol)*4)
+MARKERS <- c("HBEGF")
+f.names <- "Endo_human_snRNA_apap_Hbegf"
+ncol = 1
+fp <- FeaturePlot(Endo_human_snRNA_apap, features = MARKERS, ncol = ncol, order = T, pt.size = 0.8) & viridis::scale_colour_viridis(option = "plasma")& tidydr::theme_dr()
+ggsave(paste(f.names, "FeaturePlot.pdf", sep = "."), fp, width = ncol*4, height = ceiling(length(MARKERS)/ncol)*4)
 
 # E
 Phx_Endo <- readRDS("/home/lijinlian/test/PHX_scRNA_miguel/Phx_Endo_SCT_miguel.Rds")
