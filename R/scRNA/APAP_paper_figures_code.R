@@ -1,6 +1,5 @@
 # 此代码是，APAP与肝再生研究项目，截至2025年6月，绘制的所有分析结果的图片代码。现整理于本人GitHub仓库中，公开给大家参考。
 # 统一说明：data2下的文件夹在新服务器，data4下的文件夹在旧服务器
-# author:lijinlian
 
 # Figure1
 # B
@@ -35,19 +34,30 @@ dev.off()
 
 # C
 All_scatac <- readRDS("/data2/lijinlian/APAP/scATAC.data_scale.Rds")
-# All_scatac <- readRDS("/data4/jinlianli/APAP/Data.analysis/Object/scATAC.data.Rds")
+All_scatac$predicted.id <- as.character(All_scatac$predicted.id)
+All_scatac$predicted.id <- factor(All_scatac$predicted.id, c("Hepatocyte", "Endothelial", "Macrophage", "T", "B", "Neutrophil", "NK", "Cholangiocyte", "HSC"))         
 colors <- c(rgb(247/255,147/255,30/255), rgb(248/255,115/255,106/255), rgb(169/255,169/255,169/255), rgb(150/255,206/255,180/255), rgb(163/255,165/255,0/255), rgb(192/255,193/255,48/255), rgb(157/255,115/255,194/255), rgb(183/255,76/255,171/255), rgb(230/255,134/255,201/255), rgb(140/255,198/255,63/255), rgb(255/255,191/255,15/255),
             rgb(103/255,199/255,193/255), rgb(3/255,161/255,198/255), rgb(97/255,156/255,255/255), rgb(129/255,70/255,58/255), rgb(0/255,114/255,189/255), rgb(74/255,76/255,191/255))
 pdf("scatac_UMAP.pdf")
-DimPlot(All_scatac, group.by = "celltype", cols = colors)+ theme(legend.title = element_blank(), legend.text = element_text(size = 14)) + ggtitle("")
+DimPlot(All_scatac, group.by = "predicted.id", cols = colors)+ theme(legend.title = element_blank(), legend.text = element_text(size = 14)) + ggtitle("")
 dev.off()
-pdf("scRNA_celltype_markers_dotplot.pdf")
+celltype.markers <- c("Alb", # Hepatocyte
+                      "Ptprb", # Endothelial
+                      "Cybb", # Macrophage
+                      "Cd3d", #T
+                      "Ebf1", # B
+                      "S100a9", # Neutrophil
+                      "Klre1", #NK
+                      "Sox9", #Cholangiocyte
+                      "Dcn" # HSC
+)
+pdf("scATAC_celltype_markers_dotplot.pdf")
 jjDotPlot(object = All_scatac, 
           col.min = 0,
           anno = T,
           base_size = 14,
           textSize = 14, 
-          id = 'celltype',
+          id = 'predicted.id',
           gene = celltype.markers,
           xtree = F, ytree = F, 
           legend.position = "right")
@@ -713,22 +723,23 @@ d1
 dev.off()
 
 # E
-mouse.Hep <- readRDS("/data2/lijinlian/APAP_project/snRNA.apap2023.mouse.Hepatocyte.Rds")
-mouse.Hep <- subset(mouse.Hep, condition != "NAE")
-mouse.Hep$seurat_clusters <- as.numeric(mouse.Hep$seurat_clusters)
-mouse.Hep$seurat_clusters <- factor(mouse.Hep$seurat_clusters, levels = 1:9)
-Idents(mouse.Hep) <- mouse.Hep$seurat_clusters
+snRNA.apap2023.mouse.Hepatocyte <- readRDS("/data4/jinlianli/APAP/ANALYSIS/Nature2024_mouse_APAP_scRNA_Hep/snRNA.apap2023.mouse.Hepatocyte.Rds")
+colors_set <- ggsci::pal_lancet()(9)
+pdf("Mouse_Hep_2024scRNA_seurat_clusters_umap.pdf", width = 5, height = 5)
+DimPlot(snRNA.apap2024.mouse.Hepatocyte,cols =  cb_palette, group.by = "timepoint", pt.size = 0.5) + tidydr::theme_dr() 
+DimPlot(snRNA.apap2024.mouse.Hepatocyte, cols = colors_set, group.by = "seurat_clusters", pt.size = 0.5) + tidydr::theme_dr()
+dev.off()
 
 regeneration_receptors <- c("Egfr", "Lrp1", "Cd81", "Ptprf")
-mouse.Hep <- AddModuleScore(mouse.Hep, features = list(regeneration_receptors), name = "regeneration_receptors")
+snRNA.apap2024.mouse.Hepatocyte <- AddModuleScore(snRNA.apap2024.mouse.Hepatocyte, features = list(regeneration_receptors), name = "regeneration_receptors")
 library(scales)
 library(RColorBrewer)
 pdf("mouse.Hep_regeneration_receptors_signature.pdf", width = 4, height =4)
-FeaturePlot(mouse.Hep, features = "regeneration_receptors1", pt.size = 1.2, order = T) &
+FeaturePlot(snRNA.apap2024.mouse.Hepatocyte, features = "regeneration_receptors1", pt.size = 1.2, order = T) &
   scale_color_gradientn(colours =  rev(brewer.pal(n = 11, name = "RdBu")), 
                         # values = rescale(c(min(Hepatocyte$Pericentral.signature1),0,max(Hepatocyte$Pericentral.signature1))),
                         guide = "colorbar",
-                        limits = c(min(mouse.Hep$regeneration_receptors1), max(mouse.Hep$regeneration_receptors1))) &
+                        limits = c(min(snRNA.apap2024.mouse.Hepatocyte$regeneration_receptors1), max(snRNA.apap2024.mouse.Hepatocyte$regeneration_receptors1))) &
   tidydr::theme_dr()
 # theme(panel.border = element_rect(fill=NA,color= "black", size=1, linetype= "solid")) + theme(legend.position = "right") 
 dev.off()
@@ -741,13 +752,12 @@ fp <- FeaturePlot(human_hep, features = Hepatocyte_Hypoxia, ncol = ncol, order =
 ggsave(paste(f.names, "ncol_FeaturePlot.pdf", sep = "_"), fp, width = ncol*4, height = ceiling(length(unique(Hepatocyte_Hypoxia))/ncol)*4, limitsize = F)
 
 # G
-human_hep <- readRDS("/data2/lijinlian/APAP_project/spatial/APAP_human_2024_nature/seurat_objects/hepatocytes_downsample.rds") 
-#这个数据不小心删错了，要重新分析的话，自己去下一下数据来跑吧
-human_hep <- subset(human_hep, condition != "NAE")
-human_hep$seurat_clusters <- as.numeric(human_hep$seurat_clusters)
-human_hep$seurat_clusters <- factor(human_hep$seurat_clusters, levels = 1:9)
-Idents(human_hep) <- human_hep$seurat_clusters
-DimPlot(mouse.Hep, group.by = "seurat_clusters")
+Hep_human_snRNA_apap <- readRDS("/data4/jinlianli/APAP/ANALYSIS/Nature2024_human_APAP_scRNA_Hep/Hep_human_snRNA_apap.Rds")
+colors_set <- ggsci::pal_lancet()(9)
+pdf("Human_Hep_2024scRNA_seurat_clusters_umap.pdf", width = 5, height = 5)
+DimPlot(Hep_human_snRNA_apap, cols = colors_set, group.by = "condition", pt.size = 0.5) + tidydr::theme_dr() 
+DimPlot(Hep_human_snRNA_apap, cols = colors_set, group.by = "seurat_clusters", pt.size = 0.5) + tidydr::theme_dr()
+dev.off()
 
 regeneration_receptors <- c("EGFR",  "LRP1", "CD81", "PTPRF")
 human_hep <- AddModuleScore(human_hep, features = list(regeneration_receptors), name = "regeneration_receptors")
